@@ -10,7 +10,7 @@ Une application simple pour gérer votre bibliothèque personnelle.
 
 ### Installation
 # Cloner le projet
-git clone https://github.com/votre-username/mylibrary.git
+git clone https://github.com/.../mylibrary.git
 cd mylibrary
 
 # Backend
