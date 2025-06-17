@@ -19,14 +19,34 @@ const Login = () => {
 
   const onSubmit = async (data) => {
     setIsLoading(true);
+    console.log('🚀 DÉBUT - Tentative de connexion avec:', data.email);
+    
     try {
-      await login(data.email, data.password);
+      console.log('📞 APPEL - login() depuis AuthContext...');
+      const result = await login(data.email, data.password);
+      console.log('✅ SUCCÈS - Réponse reçue:', result);
+      
+      // Vérifier que le token est bien stocké
+      const storedToken = localStorage.getItem('token');
+      console.log('💾 TOKEN STOCKÉ:', storedToken ? 'Oui' : 'Non', storedToken?.substring(0, 20) + '...');
+      
       toast.success('Connexion réussie !');
+      console.log('🧭 NAVIGATION - Vers /dashboard...');
       navigate('/dashboard');
+      console.log('✅ NAVIGATION - Déclenchée avec succès');
+      
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Erreur lors de la connexion');
+      console.error('❌ ERREUR - Détails complets:', error);
+      console.error('❌ ERREUR - Response:', error.response);
+      console.error('❌ ERREUR - Data:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Erreur lors de la connexion';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
+      console.log('🏁 FIN - Processus de connexion terminé');
     }
   };
 

@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/database');
-const bcrypt = require('bcryptjs');
+const { sequelize } = require('./Database');
 
 const User = sequelize.define('User', {
   id: {
@@ -11,52 +10,33 @@ const User = sequelize.define('User', {
   username: {
     type: DataTypes.STRING(50),
     allowNull: false,
-    unique: true,
-    validate: {
-      len: [3, 50],
-      notEmpty: true
-    }
+    unique: true
   },
   email: {
     type: DataTypes.STRING(100),
     allowNull: false,
     unique: true,
     validate: {
-      isEmail: true,
-      notEmpty: true
+      isEmail: true
     }
   },
   password: {
     type: DataTypes.STRING(255),
-    allowNull: false,
-    validate: {
-      len: [6, 255]
-    }
+    allowNull: false
+  },
+  firstName: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
+  lastName: {
+    type: DataTypes.STRING(50),
+    allowNull: true
   }
 }, {
   tableName: 'users',
-  timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
-  hooks: {
-    beforeCreate: async (user) => {
-      if (user.password) {
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
-      }
-    },
-    beforeUpdate: async (user) => {
-      if (user.changed('password')) {
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
-      }
-    }
-  }
+  timestamps: false,
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
 });
-
-// Méthode pour comparer les mots de passe
-User.prototype.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
-};
 
 module.exports = User;

@@ -1,240 +1,102 @@
-const { Book } = require('../models');
-const { validationResult } = require('express-validator');
-const { Op, fn, col, literal } = require('sequelize');
-const { sequelize } = require('../config/database');
+const { Book, User } = require('../models'); // ✅ Import depuis index.js
 
-// Obtenir tous les livres de l'utilisateur
-const getBooks = async (req, res) => {
-  try {
-    const { search, genre, status, page = 1, limit = 10 } = req.query;
-    const offset = (page - 1) * limit;
+class BookController {
+  // Créer un livre
+  static async createBook(req, res) {
+    try {
+      console.log('📚 CREATE_BOOK - Données reçues:', req.body);
+      console.log('📚 CREATE_BOOK - User ID:', req.user.id);
 
-    // Construire les conditions de recherche
-    const whereConditions = { user_id: req.user.id };
+      const {
+        title,
+        author,
+        genre,
+        publication_year,
+        pages,
+        status = 'to_read',
+        rating,
+        notes
+      } = req.body;
 
-    if (search) {
-      whereConditions[Op.or] = [
-        { title: { [Op.like]: `%${search}%` } },
-        { author: { [Op.like]: `%${search}%` } }
-      ];
-    }
-
-    if (genre) {
-      whereConditions.genre = genre;
-    }
-
-    if (status) {
-      whereConditions.status = status;
-    }
-
-    const { count, rows: books } = await Book.findAndCountAll({
-      where: whereConditions,
-      order: [['created_at', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
-
-    res.json({
-      success: true,
-      data: {
-        books,
-        pagination: {
-          total: count,
-          totalPages: Math.ceil(count / limit),
-          currentPage: parseInt(page),
-          perPage: parseInt(limit)
-        }
+      // Validation des champs requis
+      if (!title || !author) {
+        return res.status(400).json({
+          success: false,
+          message: 'Le titre et l\'auteur sont requis',
+          errors: [
+            { field: 'title', message: 'Le titre est requis' },
+            { field: 'author', message: 'L\'auteur est requis' }
+          ]
+        });
       }
-    });
-  } catch (error) {
-    console.error('Erreur lors de la récupération des livres:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur lors de la récupération des livres'
-    });
-  }
-};
 
-// Obtenir un livre par ID
-const getBook = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const book = await Book.findOne({
-      where: { id, user_id: req.user.id }
-    });
-
-    if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: 'Livre non trouvé'
+      // Créer le livre
+      const newBook = await Book.create({
+        title,
+        author,
+        genre: genre || null,
+        publication_year: publication_year || null,
+        pages: pages || null,
+        status,
+        rating: status === 'read' ? rating : null, // Seulement si lu
+        notes: notes || null,
+        user_id: req.user.id
       });
-    }
 
-    res.json({
-      success: true,
-      data: book
-    });
-  } catch (error) {
-    console.error('Erreur lors de la récupération du livre:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur lors de la récupération du livre'
-    });
-  }
-};
+      console.log('✅ CREATE_BOOK - Livre créé:', newBook.id);
 
-// Créer un nouveau livre
-const createBook = async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Données invalides',
-        errors: errors.array()
+      res.status(201).json({
+        success: true,
+        message: 'Livre ajouté avec succès',
+        data: newBook
       });
-    }
 
-    const bookData = {
-      ...req.body,
-      user_id: req.user.id
-    };
+    } catch (error) {
+      console.error('❌ CREATE_BOOK - Erreur:', error);
+      
+      // Gestion des erreurs de validation Sequelize
+      if (error.name === 'SequelizeValidationError') {
+        const validationErrors = error.errors.map(err => ({
+          field: err.path,
+          message: err.message
+        }));
 
-    const book = await Book.create(bookData);
-
-    res.status(201).json({
-      success: true,
-      message: 'Livre ajouté avec succès',
-      data: book
-    });
-  } catch (error) {
-    console.error('Erreur lors de la création du livre:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur lors de la création du livre'
-    });
-  }
-};
-
-// Mettre à jour un livre
-const updateBook = async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Données invalides',
-        errors: errors.array()
-      });
-    }
-
-    const { id } = req.params;
-    
-    const book = await Book.findOne({
-      where: { id, user_id: req.user.id }
-    });
-
-    if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: 'Livre non trouvé'
-      });
-    }
-
-    await book.update(req.body);
-
-    res.json({
-      success: true,
-      message: 'Livre mis à jour avec succès',
-      data: book
-    });
-  } catch (error) {
-    console.error('Erreur lors de la mise à jour du livre:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur lors de la mise à jour du livre'
-    });
-  }
-};
-
-// Supprimer un livre
-const deleteBook = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const book = await Book.findOne({
-      where: { id, user_id: req.user.id }
-    });
-
-    if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: 'Livre non trouvé'
-      });
-    }
-
-    await book.destroy();
-
-    res.json({
-      success: true,
-      message: 'Livre supprimé avec succès'
-    });
-  } catch (error) {
-    console.error('Erreur lors de la suppression du livre:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur lors de la suppression du livre'
-    });
-  }
-};
-
-// Obtenir les statistiques des livres
-const getStats = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const totalBooks = await Book.count({ where: { user_id: userId } });
-    const readBooks = await Book.count({ where: { user_id: userId, status: 'read' } });
-    const readingBooks = await Book.count({ where: { user_id: userId, status: 'reading' } });
-    const toReadBooks = await Book.count({ where: { user_id: userId, status: 'to_read' } });
-
-    // Genres les plus populaires
-    const genreStats = await Book.findAll({
-      attributes: [
-        'genre',
-        [fn('COUNT', col('genre')), 'count']
-      ],
-      where: { user_id: userId, genre: { [Op.not]: null } },
-      group: ['genre'],
-      order: [[literal('count'), 'DESC']],
-      limit: 5
-    });
-
-    res.json({
-      success: true,
-      data: {
-        totalBooks,
-        readBooks,
-        readingBooks,
-        toReadBooks,
-        topGenres: genreStats
+        return res.status(400).json({
+          success: false,
+          message: 'Données invalides',
+          errors: validationErrors
+        });
       }
-    });
-  } catch (error) {
-    console.error('Erreur lors de la récupération des statistiques:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur lors de la récupération des statistiques'
-    });
-  }
-};
 
-module.exports = {
-  getBooks,
-  getBook,
-  createBook,
-  updateBook,
-  deleteBook,
-  getStats
-};
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création du livre',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  // Récupérer les livres de l'utilisateur
+  static async getUserBooks(req, res) {
+    try {
+      const books = await Book.findAll({
+        where: { user_id: req.user.id },
+        order: [['createdAt', 'DESC']]
+      });
+
+      res.json({
+        success: true,
+        data: books
+      });
+
+    } catch (error) {
+      console.error('❌ GET_USER_BOOKS - Erreur:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des livres'
+      });
+    }
+  }
+}
+
+module.exports = BookController;

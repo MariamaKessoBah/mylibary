@@ -18,11 +18,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('token');
+      console.log('🔄 INIT AUTH - Token trouvé:', token ? 'Oui' : 'Non');
+      
       if (token) {
         try {
+          console.log('📞 INIT AUTH - Récupération du profil...');
           const userData = await authService.getProfile();
+          console.log('✅ INIT AUTH - Profil récupéré:', userData);
           setUser(userData.user);
         } catch (error) {
+          console.log('❌ INIT AUTH - Erreur profil:', error.message);
           localStorage.removeItem('token');
         }
       }
@@ -33,10 +38,31 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const response = await authService.login(email, password);
-    localStorage.setItem('token', response.token);
-    setUser(response.user);
-    return response;
+    console.log('🔐 LOGIN CONTEXT - Début avec:', email);
+    
+    try {
+      console.log('📞 LOGIN CONTEXT - Appel authService.login...');
+      const response = await authService.login(email, password);
+      console.log('📨 LOGIN CONTEXT - Réponse authService:', response);
+      
+      if (!response.token) {
+        console.error('❌ LOGIN CONTEXT - Pas de token dans la réponse!');
+        throw new Error('Aucun token reçu du serveur');
+      }
+      
+      console.log('💾 LOGIN CONTEXT - Stockage du token...');
+      localStorage.setItem('token', response.token);
+      
+      console.log('👤 LOGIN CONTEXT - Définition utilisateur:', response.user);
+      setUser(response.user);
+      
+      console.log('✅ LOGIN CONTEXT - Connexion terminée avec succès');
+      return response;
+      
+    } catch (error) {
+      console.error('❌ LOGIN CONTEXT - Erreur:', error);
+      throw error;
+    }
   };
 
   const register = async (username, email, password) => {
@@ -47,6 +73,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    console.log('🚪 LOGOUT - Déconnexion');
     localStorage.removeItem('token');
     setUser(null);
   };

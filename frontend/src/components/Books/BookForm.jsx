@@ -37,11 +37,14 @@ const BookForm = ({ book, onSubmit, onCancel, isLoading }) => {
       notes: data.notes?.trim() || null
     };
 
-    // Validation logique : pas de note si le livre n'est pas lu
-    if (cleanedData.status !== 'read' && cleanedData.rating) {
+    // 🔧 LOGIQUE MÉTIER IMPORTANTE : 
+    // Automatiquement supprimer la note si le livre n'est pas "lu"
+    if (cleanedData.status === 'to_read' || cleanedData.status === 'reading') {
       cleanedData.rating = null;
+      console.log(`📚 Statut "${cleanedData.status}" - note supprimée automatiquement`);
     }
 
+    console.log('📋 Données nettoyées envoyées:', cleanedData);
     onSubmit(cleanedData);
   };
 
@@ -92,7 +95,7 @@ const BookForm = ({ book, onSubmit, onCancel, isLoading }) => {
             {...register('genre')}
             type="text"
             className="input mt-1"
-            placeholder="Fiction, Science, etc."
+            placeholder="Roman épistolaire, Science-Fiction..."
           />
           <p className="mt-1 text-xs text-gray-500">Optionnel</p>
         </div>
@@ -113,7 +116,7 @@ const BookForm = ({ book, onSubmit, onCancel, isLoading }) => {
             })}
             type="number"
             className="input mt-1"
-            placeholder="2023"
+            placeholder="1979"
             min="1000"
             max={currentYear + 1}
           />
@@ -141,7 +144,7 @@ const BookForm = ({ book, onSubmit, onCancel, isLoading }) => {
             })}
             type="number"
             className="input mt-1"
-            placeholder="250"
+            placeholder="131"
             min="1"
             max="10000"
           />
@@ -159,9 +162,9 @@ const BookForm = ({ book, onSubmit, onCancel, isLoading }) => {
             {...register('status', { required: 'Le statut est requis' })}
             className="input mt-1"
           >
-            <option value="to_read">À lire</option>
-            <option value="reading">En cours de lecture</option>
-            <option value="read">Terminé (Lu)</option>
+            <option value="to_read">📚 À lire</option>
+            <option value="reading">📖 En cours de lecture</option>
+            <option value="read">✅ Terminé (Lu)</option>
           </select>
           {errors.status && (
             <p className="mt-1 text-sm text-red-600">{errors.status.message}</p>
@@ -175,24 +178,34 @@ const BookForm = ({ book, onSubmit, onCancel, isLoading }) => {
         </label>
         <select
           {...register('rating')}
-          className="input mt-1"
+          className={`input mt-1 ${statusValue !== 'read' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
           disabled={statusValue !== 'read'}
         >
-          <option value="">Pas de note</option>
+          <option value="">
+            {statusValue !== 'read' ? 'Pas de note (livre non terminé)' : 'Pas de note'}
+          </option>
           <option value="1">⭐ (1 étoile) - Décevant</option>
           <option value="2">⭐⭐ (2 étoiles) - Moyen</option>
           <option value="3">⭐⭐⭐ (3 étoiles) - Bien</option>
           <option value="4">⭐⭐⭐⭐ (4 étoiles) - Très bien</option>
           <option value="5">⭐⭐⭐⭐⭐ (5 étoiles) - Excellent</option>
         </select>
-        {statusValue !== 'read' && (
-          <p className="mt-1 text-xs text-amber-600">
-            💡 La note n'est disponible que pour les livres terminés
+        
+        {statusValue === 'to_read' && (
+          <p className="mt-1 text-xs text-blue-600">
+            📚 Changez le statut en "Terminé" pour pouvoir noter ce livre
           </p>
         )}
+        
+        {statusValue === 'reading' && (
+          <p className="mt-1 text-xs text-amber-600">
+            📖 Terminez la lecture pour pouvoir noter ce livre
+          </p>
+        )}
+        
         {statusValue === 'read' && (
-          <p className="mt-1 text-xs text-gray-500">
-            Optionnel - Vous pouvez noter ce livre
+          <p className="mt-1 text-xs text-green-600">
+            ⭐ Vous pouvez maintenant noter ce livre !
           </p>
         )}
       </div>
@@ -205,30 +218,48 @@ const BookForm = ({ book, onSubmit, onCancel, isLoading }) => {
           {...register('notes')}
           rows="3"
           className="input mt-1 resize-none"
-          placeholder="Vos impressions, ce que vous avez aimé/pas aimé, citations marquantes..."
+          placeholder={
+            statusValue === 'to_read' ? 
+            "Pourquoi voulez-vous lire ce livre ? Qui vous l'a recommandé ?" :
+            statusValue === 'reading' ?
+            "Vos impressions actuelles, citations marquantes..." :
+            "Votre avis final, ce que vous avez aimé/pas aimé..."
+          }
         />
         <p className="mt-1 text-xs text-gray-500">
           Optionnel - Partagez vos réflexions sur ce livre
         </p>
       </div>
 
-      {/* Résumé des informations */}
-      <div className="bg-gray-50 rounded-lg p-4 border">
+      {/* Résumé dynamique des informations */}
+      <div className={`rounded-lg p-4 border ${
+        statusValue === 'to_read' ? 'bg-blue-50 border-blue-200' :
+        statusValue === 'reading' ? 'bg-amber-50 border-amber-200' :
+        'bg-green-50 border-green-200'
+      }`}>
         <h4 className="text-sm font-medium text-gray-700 mb-2">📋 Résumé :</h4>
         <div className="text-sm text-gray-600 space-y-1">
           <p><strong>Statut :</strong> {
-            statusValue === 'to_read' ? '📚 À lire' :
-            statusValue === 'reading' ? '📖 En cours de lecture' :
-            '✅ Terminé'
+            statusValue === 'to_read' ? '📚 À lire - Ce livre est dans votre liste d\'attente' :
+            statusValue === 'reading' ? '📖 En cours de lecture - Bonne lecture !' :
+            '✅ Terminé - Félicitations pour avoir terminé ce livre !'
           }</p>
+          
           {statusValue === 'read' && (
             <p className="text-green-600">
-              💡 Vous pouvez maintenant ajouter une note et vos impressions !
+              🎉 Vous pouvez maintenant ajouter une note et vos impressions finales !
             </p>
           )}
-          {statusValue !== 'read' && (
+          
+          {statusValue === 'reading' && (
+            <p className="text-amber-600">
+              💪 Continuez votre lecture ! Vous pourrez noter le livre une fois terminé.
+            </p>
+          )}
+          
+          {statusValue === 'to_read' && (
             <p className="text-blue-600">
-              📝 Changez le statut en "Terminé" pour pouvoir noter le livre
+              🎯 Ce livre vous attend ! Changez le statut quand vous commencerez.
             </p>
           )}
         </div>
