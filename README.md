@@ -10,7 +10,7 @@ Une application simple pour gérer votre bibliothèque personnelle.
 
 ### Installation
 # Cloner le projet
-git clone https://github.com/.../mylibrary.git
+git clone https://github.com/MariamaKessoBah/mylibrary.git
 cd mylibrary
 
 # Backend
@@ -22,7 +22,6 @@ npm run dev
 cd frontend
 npm install
 npm run dev
-```
 
 Accès
 - **Application :** http://localhost:3000
